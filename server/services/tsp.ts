@@ -7,12 +7,30 @@ interface DistanceMatrix {
 interface RouteSegment {
   distance: number;
   duration: number; // in seconds
+  geometry?: string; // Encoded polyline for detailed route
+  steps?: RouteStep[];
+}
+
+interface RouteStep {
+  instruction: string;
+  distance: number;
+  duration: number;
+  geometry: string;
+}
+
+interface DetailedRouteSegment {
+  from: Address;
+  to: Address;
+  distance: number;
+  duration: number;
+  geometry: string;
+  steps: RouteStep[];
 }
 
 export class TSPService {
   private osrmBaseUrl = 'https://router.project-osrm.org';
 
-  // Calculate distance matrix using OSRM
+  // Calculate distance matrix using OSRM with detailed routing
   async calculateDistanceMatrix(addresses: Address[]): Promise<DistanceMatrix> {
     if (addresses.length < 2) {
       throw new Error('Need at least 2 addresses to calculate distances');
@@ -43,6 +61,61 @@ export class TSPService {
       console.error('Distance matrix calculation error:', error);
       // Fallback to Euclidean distance
       return this.calculateEuclideanDistanceMatrix(addresses);
+    }
+  }
+
+  // Get detailed routing information between two addresses
+  async getDetailedRoute(from: Address, to: Address): Promise<DetailedRouteSegment> {
+    const coordinates = `${from.longitude},${from.latitude};${to.longitude},${to.latitude}`;
+    const url = `${this.osrmBaseUrl}/route/v1/driving/${coordinates}?steps=true&geometries=geojson&overview=full`;
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`OSRM route API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const route = data.routes[0];
+      
+      const steps: RouteStep[] = route.legs[0].steps.map((step: any) => ({
+        instruction: step.maneuver.instruction || `${step.maneuver.type} ${step.maneuver.modifier || ''}`.trim(),
+        distance: Math.round(step.distance),
+        duration: Math.round(step.duration),
+        geometry: JSON.stringify(step.geometry)
+      }));
+
+      return {
+        from,
+        to,
+        distance: Math.round(route.distance / 1000 * 10) / 10, // km with 1 decimal
+        duration: Math.round(route.duration / 60), // minutes
+        geometry: JSON.stringify(route.geometry),
+        steps
+      };
+    } catch (error) {
+      console.error('Detailed route error:', error);
+      // Fallback to basic segment
+      const distance = this.haversineDistance(from.latitude, from.longitude, to.latitude, to.longitude);
+      return {
+        from,
+        to,
+        distance: Math.round(distance * 10) / 10,
+        duration: Math.round(distance * 2), // 2 minutes per km estimate
+        geometry: JSON.stringify({
+          type: "LineString",
+          coordinates: [[from.longitude, from.latitude], [to.longitude, to.latitude]]
+        }),
+        steps: [{
+          instruction: `Drive to ${to.name}`,
+          distance: Math.round(distance * 1000),
+          duration: Math.round(distance * 2 * 60),
+          geometry: JSON.stringify({
+            type: "LineString",
+            coordinates: [[from.longitude, from.latitude], [to.longitude, to.latitude]]
+          })
+        }]
+      };
     }
   }
 
@@ -97,7 +170,7 @@ export class TSPService {
       let nearestId = '';
       let nearestDistance = Infinity;
 
-      for (const id of unvisited) {
+      for (const id of Array.from(unvisited)) {
         const distance = distanceMatrix[currentId][id];
         if (distance < nearestDistance) {
           nearestDistance = distance;
@@ -175,7 +248,7 @@ export class TSPService {
     return totalDistance;
   }
 
-  async optimizeRoute(addresses: Address[], algorithm: 'nearest-neighbor' | '2-opt' = '2-opt'): Promise<OptimizedRoute> {
+  async optimizeRoute(addresses: Address[], algorithm: 'nearest-neighbor' | '2-opt' = '2-opt'): Promise<OptimizedRoute & { detailedSegments: DetailedRouteSegment[] }> {
     const distanceMatrix = await this.calculateDistanceMatrix(addresses);
     
     const originalDistance = this.calculateOriginalDistance(addresses, distanceMatrix);
@@ -192,10 +265,21 @@ export class TSPService {
     const savedDistance = originalDistance - optimizedRoute.totalDistance;
     const efficiency = originalDistance > 0 ? (savedDistance / originalDistance) * 100 : 0;
 
+    // Get detailed routing for each segment
+    const detailedSegments: DetailedRouteSegment[] = [];
+    for (let i = 0; i < optimizedRoute.orderedAddresses.length; i++) {
+      const from = optimizedRoute.orderedAddresses[i];
+      const to = optimizedRoute.orderedAddresses[(i + 1) % optimizedRoute.orderedAddresses.length];
+      
+      const segment = await this.getDetailedRoute(from, to);
+      detailedSegments.push(segment);
+    }
+
     return {
       ...optimizedRoute,
       savedDistance,
-      efficiency
+      efficiency,
+      detailedSegments
     };
   }
 

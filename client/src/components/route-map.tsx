@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Address, OptimizedRoute } from "@shared/schema";
+import { Address, OptimizedRoute, DetailedRouteSegment } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Plus, Minus, Maximize2, Layers } from "lucide-react";
 
@@ -13,6 +13,7 @@ declare global {
 interface RouteMapProps {
   addresses: Address[];
   optimizedRoute: OptimizedRoute | null;
+  detailedSegments?: DetailedRouteSegment[];
   isCalculating: boolean;
 }
 

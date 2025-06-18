@@ -53,3 +53,19 @@ export interface GeocodingResult {
   longitude: number;
   displayName: string;
 }
+
+export interface RouteStep {
+  instruction: string;
+  distance: number;
+  duration: number;
+  geometry: string;
+}
+
+export interface DetailedRouteSegment {
+  from: Address;
+  to: Address;
+  distance: number;
+  duration: number;
+  geometry: string;
+  steps: RouteStep[];
+}
