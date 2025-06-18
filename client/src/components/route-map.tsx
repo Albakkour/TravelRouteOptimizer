@@ -17,7 +17,7 @@ interface RouteMapProps {
   isCalculating: boolean;
 }
 
-export default function RouteMap({ addresses, optimizedRoute, isCalculating }: RouteMapProps) {
+export default function RouteMap({ addresses, optimizedRoute, detailedSegments, isCalculating }: RouteMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
@@ -89,17 +89,67 @@ export default function RouteMap({ addresses, optimizedRoute, isCalculating }: R
       markersRef.current.push(marker);
     });
 
-    // Add route line if optimized route exists
+    // Add detailed route lines if available, otherwise fallback to straight lines
     if (optimizedRoute && optimizedRoute.orderedAddresses.length > 1) {
-      const coordinates = optimizedRoute.orderedAddresses.map(addr => [addr.latitude, addr.longitude]);
-      // Close the route by returning to start
-      coordinates.push([optimizedRoute.orderedAddresses[0].latitude, optimizedRoute.orderedAddresses[0].longitude]);
+      if (detailedSegments && detailedSegments.length > 0) {
+        // Draw detailed routes with actual road geometry
+        detailedSegments.forEach((segment, index) => {
+          try {
+            const geometry = JSON.parse(segment.geometry);
+            if (geometry && geometry.coordinates) {
+              // Convert coordinates from [lng, lat] to [lat, lng] for Leaflet
+              const coords = geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]);
+              
+              const color = index === 0 ? '#10B981' : '#3B82F6'; // Green for first segment, blue for others
+              
+              const polyline = window.L.polyline(coords, {
+                color,
+                weight: 4,
+                opacity: 0.8
+              }).addTo(mapInstanceRef.current);
 
-      routeLineRef.current = window.L.polyline(coordinates, {
-        color: '#3B82F6',
-        weight: 3,
-        opacity: 0.8
-      }).addTo(mapInstanceRef.current);
+              // Add segment markers with distance info
+              const midpoint = coords[Math.floor(coords.length / 2)];
+              const popup = window.L.popup({
+                closeButton: false,
+                autoClose: false,
+                closeOnClick: false,
+                className: 'route-segment-popup'
+              })
+              .setLatLng(midpoint)
+              .setContent(`
+                <div class="text-xs p-1">
+                  <div class="font-medium">${segment.from.name} → ${segment.to.name}</div>
+                  <div class="text-gray-600">${(segment.distance).toFixed(1)}km • ${segment.duration}min</div>
+                </div>
+              `);
+
+              polyline.bindPopup(popup);
+            }
+          } catch (error) {
+            console.error('Error parsing geometry for segment:', error);
+            // Fallback to straight line for this segment
+            const coords = [[segment.from.latitude, segment.from.longitude], [segment.to.latitude, segment.to.longitude]];
+            window.L.polyline(coords, {
+              color: '#3B82F6',
+              weight: 3,
+              opacity: 0.8,
+              dashArray: '5, 5'
+            }).addTo(mapInstanceRef.current);
+          }
+        });
+      } else {
+        // Fallback to straight lines
+        const coordinates = optimizedRoute.orderedAddresses.map(addr => [addr.latitude, addr.longitude]);
+        coordinates.push([optimizedRoute.orderedAddresses[0].latitude, optimizedRoute.orderedAddresses[0].longitude]);
+
+        routeLineRef.current = window.L.polyline(coordinates, {
+          color: '#3B82F6',
+          weight: 3,
+          opacity: 0.8,
+          dashArray: '5, 5'
+        }).addTo(mapInstanceRef.current);
+      }
     }
 
     // Fit map to show all markers
@@ -107,7 +157,7 @@ export default function RouteMap({ addresses, optimizedRoute, isCalculating }: R
       const group = new window.L.featureGroup(markersRef.current);
       mapInstanceRef.current.fitBounds(group.getBounds().pad(0.1));
     }
-  }, [addresses, optimizedRoute]);
+  }, [addresses, optimizedRoute, detailedSegments]);
 
   const handleZoomIn = () => {
     if (mapInstanceRef.current) {

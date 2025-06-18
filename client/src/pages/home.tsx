@@ -1,22 +1,26 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { Address, OptimizedRoute } from "@shared/schema";
+import { Address, OptimizedRoute, DetailedRouteSegment } from "@shared/schema";
 import AddressInput from "@/components/address-input";
 import AddressList from "@/components/address-list";
 import RouteMap from "@/components/route-map";
 import RouteStats from "@/components/route-stats";
+import RouteDirections from "@/components/route-directions";
+import RouteSummary from "@/components/route-summary";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Route, Settings, Moon, Sun, Save, Download, Share2, Trash2 } from "lucide-react";
+import { Route, Settings, Moon, Sun, Save, Download, Share2, Trash2, Navigation, Map } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function Home() {
   const [algorithm, setAlgorithm] = useState<'nearest-neighbor' | '2-opt'>('2-opt');
   const [optimizedRoute, setOptimizedRoute] = useState<OptimizedRoute | null>(null);
+  const [detailedSegments, setDetailedSegments] = useState<DetailedRouteSegment[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const { toast } = useToast();
 
@@ -31,6 +35,7 @@ export default function Home() {
     },
     onSuccess: (data) => {
       setOptimizedRoute(data.optimizedRoute);
+      setDetailedSegments(data.optimizedRoute.detailedSegments || []);
       toast({
         title: "Route Optimized",
         description: `Found optimal route using ${algorithm} algorithm`,
@@ -55,6 +60,7 @@ export default function Home() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/addresses'] });
       setOptimizedRoute(null);
+      setDetailedSegments([]);
       toast({
         title: "Cleared",
         description: "All addresses have been cleared",
@@ -201,19 +207,84 @@ export default function Home() {
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col bg-gray-50 dark:bg-slate-800">
-          {/* Results Header */}
-          {optimizedRoute && (
-            <RouteStats route={optimizedRoute} />
-          )}
+          {optimizedRoute ? (
+            <Tabs defaultValue="map" className="flex-1 flex flex-col">
+              <div className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 px-4">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="map" className="flex items-center">
+                    <Map className="w-4 h-4 mr-2" />
+                    Map View
+                  </TabsTrigger>
+                  <TabsTrigger value="directions" className="flex items-center">
+                    <Navigation className="w-4 h-4 mr-2" />
+                    Directions
+                  </TabsTrigger>
+                  <TabsTrigger value="summary" className="flex items-center">
+                    <Route className="w-4 h-4 mr-2" />
+                    Summary
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
-          {/* Map Container */}
-          <div className="flex-1 relative">
-            <RouteMap
-              addresses={addresses}
-              optimizedRoute={optimizedRoute}
-              isCalculating={optimizeRouteMutation.isPending}
-            />
-          </div>
+              <TabsContent value="map" className="flex-1 relative mt-0">
+                <RouteMap
+                  addresses={addresses}
+                  optimizedRoute={optimizedRoute}
+                  detailedSegments={detailedSegments}
+                  isCalculating={optimizeRouteMutation.isPending}
+                />
+              </TabsContent>
+
+              <TabsContent value="directions" className="flex-1 p-4 overflow-hidden mt-0">
+                {detailedSegments.length > 0 ? (
+                  <RouteDirections
+                    segments={detailedSegments}
+                    orderedAddresses={optimizedRoute.orderedAddresses}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <Navigation className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">
+                        Detailed Directions Not Available
+                      </h3>
+                      <p className="text-slate-600 dark:text-slate-400">
+                        Route optimization completed but detailed turn-by-turn directions could not be generated.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="summary" className="flex-1 p-4 overflow-y-auto mt-0">
+                <RouteSummary
+                  segments={detailedSegments}
+                  orderedAddresses={optimizedRoute.orderedAddresses}
+                  efficiency={optimizedRoute.efficiency}
+                  savedDistance={optimizedRoute.savedDistance}
+                />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-24 h-24 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Route className="w-12 h-12 text-slate-400" />
+                </div>
+                <h3 className="text-xl font-medium text-slate-900 dark:text-slate-100 mb-2">
+                  Ready to Optimize Your Route
+                </h3>
+                <p className="text-slate-600 dark:text-slate-400 mb-4 max-w-md">
+                  Add at least 2 addresses and click "Optimize Route" to get started with finding the shortest path for your journey.
+                </p>
+                <div className="text-sm text-slate-500 dark:text-slate-400">
+                  <p>• Add addresses manually or paste a list</p>
+                  <p>• Choose optimization algorithm</p>
+                  <p>• Get turn-by-turn directions</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

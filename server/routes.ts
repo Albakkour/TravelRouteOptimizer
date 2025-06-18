@@ -111,22 +111,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Optimize route
-      const optimizedRoute = await tspService.optimizeRoute(addresses, algorithm);
+      const result = await tspService.optimizeRoute(addresses, algorithm);
       
       // Save route
       const routeData = {
         name: null,
         algorithm,
-        totalDistance: optimizedRoute.totalDistance,
-        estimatedTime: optimizedRoute.estimatedTime,
-        addressOrder: optimizedRoute.orderedAddresses.map(addr => addr.id.toString()),
+        totalDistance: result.totalDistance,
+        estimatedTime: result.estimatedTime,
+        addressOrder: result.orderedAddresses.map(addr => addr.id.toString()),
       };
       
       const savedRoute = await storage.createRoute(routeData);
       
       res.json({
         route: savedRoute,
-        optimizedRoute,
+        optimizedRoute: result,
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
