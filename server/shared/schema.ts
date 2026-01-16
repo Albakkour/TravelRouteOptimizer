@@ -1,6 +1,18 @@
-import { pgTable, text, serial, real, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  serial,
+  real,
+  integer,
+  boolean,
+  timestamp,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+/* =========================
+   DATABASE TABLES
+   ========================= */
 
 export const addresses = pgTable("addresses", {
   id: serial("id").primaryKey(),
@@ -17,27 +29,46 @@ export const routes = pgTable("routes", {
   name: text("name"),
   algorithm: text("algorithm").notNull(),
   totalDistance: real("total_distance").notNull(),
-  estimatedTime: integer("estimated_time").notNull(), // in minutes
-  addressOrder: text("address_order").array().notNull(),
+  estimatedTime: integer("estimated_time").notNull(), // minutes
+  addressOrder: text("address_order").array().notNull(), // ✅ string[]
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+/* =========================
+   INSERT SCHEMAS (ZOD)
+   ========================= */
 
 export const insertAddressSchema = createInsertSchema(addresses).omit({
   id: true,
   createdAt: true,
 });
 
-export const insertRouteSchema = createInsertSchema(routes).omit({
+/**
+ * IMPORTANT FIX:
+ * drizzle-zod may infer text().array() incorrectly.
+ * We explicitly force addressOrder to be string[].
+ */
+export const insertRouteSchema = createInsertSchema(routes, {
+  addressOrder: z.array(z.string()),
+}).omit({
   id: true,
   createdAt: true,
 });
 
+/* =========================
+   TYPES (INFERRED)
+   ========================= */
+
 export type Address = typeof addresses.$inferSelect;
 export type InsertAddress = z.infer<typeof insertAddressSchema>;
+
 export type Route = typeof routes.$inferSelect;
 export type InsertRoute = z.infer<typeof insertRouteSchema>;
 
-// Additional types for the application
+/* =========================
+   APPLICATION-LEVEL TYPES
+   ========================= */
+
 export interface OptimizedRoute {
   orderedAddresses: Address[];
   totalDistance: number;
