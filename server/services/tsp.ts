@@ -1,4 +1,4 @@
-import { Address, OptimizedRoute } from "@shared/schema";
+import { Address, OptimizedRoute } from "../shared/schema";
 
 interface DistanceMatrix {
   [key: string]: { [key: string]: number };

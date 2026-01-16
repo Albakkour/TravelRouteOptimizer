@@ -5,7 +5,8 @@ import {
   type InsertAddress,
   type Route,
   type InsertRoute,
-} from "@shared/schema";
+} from "./shared/schema";
+
 
 export interface IStorage {
   // Address operations

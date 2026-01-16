@@ -3,7 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { geocodingService } from "./services/geocoding";
 import { tspService } from "./services/tsp";
-import { insertAddressSchema } from "@shared/schema";
+import { insertAddressSchema } from "./shared/schema";
+
 import { z } from "zod";
 
 const optimizeRouteSchema = z.object({

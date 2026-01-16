@@ -9,10 +9,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
 
-    "baseUrl": ".",
-    "paths": {
-      "@shared/*": ["shared/*"]
-    }
+    "baseUrl": "."
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules", "dist"]

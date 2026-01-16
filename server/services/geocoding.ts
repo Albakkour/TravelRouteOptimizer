@@ -1,4 +1,4 @@
-import { GeocodingResult } from "@shared/schema";
+import { GeocodingResult } from "../shared/schema";
 
 interface NominatimGeocodeResponse {
   lat: string;
