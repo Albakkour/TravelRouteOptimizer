@@ -1,34 +1,35 @@
 import { GeocodingResult } from "@shared/schema";
 
-interface NominatimResponse {
+interface NominatimGeocodeResponse {
   lat: string;
   lon: string;
   display_name: string;
-  place_id: string;
-  importance: number;
+}
+
+interface NominatimReverseResponse {
+  display_name: string;
 }
 
 export class GeocodingService {
-  private baseUrl = 'https://nominatim.openstreetmap.org';
-
   async geocodeAddress(address: string): Promise<GeocodingResult | null> {
     try {
       const encodedAddress = encodeURIComponent(address);
-      const url = `${this.baseUrl}/search?q=${encodedAddress}&format=json&limit=1&addressdetails=1`;
-      
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'TSP-Route-Optimizer/1.0'
-        }
-      });
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1`;
 
+      console.log(`Geocoding request: ${url}`);
+      const response = await fetch(url);
+
+      console.log(`Geocoding response status: ${response.status}`);
       if (!response.ok) {
-        throw new Error(`Geocoding failed: ${response.statusText}`);
+        console.error(`Geocoding API request failed: ${response.status} - ${response.statusText}`);
+        return null;
       }
 
-      const data: NominatimResponse[] = await response.json();
-      
+      const data: NominatimGeocodeResponse[] = await response.json();
+      console.log(`Geocoding results: ${data.length}`);
+
       if (data.length === 0) {
+        console.log(`No geocoding results for address: ${address}`);
         return null;
       }
 
@@ -47,20 +48,26 @@ export class GeocodingService {
 
   async reverseGeocode(latitude: number, longitude: number): Promise<string | null> {
     try {
-      const url = `${this.baseUrl}/reverse?lat=${latitude}&lon=${longitude}&format=json`;
-      
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'TSP-Route-Optimizer/1.0'
-        }
-      });
+      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
 
+      console.log(`Reverse geocoding request: ${url}`);
+      const response = await fetch(url);
+
+      console.log(`Reverse geocoding response status: ${response.status}`);
       if (!response.ok) {
-        throw new Error(`Reverse geocoding failed: ${response.statusText}`);
+        console.error(`Reverse geocoding API request failed: ${response.status} - ${response.statusText}`);
+        return null;
       }
 
-      const data = await response.json();
-      return data.display_name || null;
+      const data: NominatimReverseResponse = await response.json();
+      console.log(`Reverse geocoding result: ${data.display_name ? 'found' : 'not found'}`);
+
+      if (!data.display_name) {
+        console.log(`No reverse geocoding results for coordinates: ${latitude}, ${longitude}`);
+        return null;
+      }
+
+      return data.display_name;
     } catch (error) {
       console.error('Reverse geocoding error:', error);
       return null;

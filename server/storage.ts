@@ -1,13 +1,23 @@
-import { addresses, routes, type Address, type InsertAddress, type Route, type InsertRoute } from "@shared/schema";
+import {
+  addresses,
+  routes,
+  type Address,
+  type InsertAddress,
+  type Route,
+  type InsertRoute,
+} from "@shared/schema";
 
 export interface IStorage {
   // Address operations
   getAddress(id: number): Promise<Address | undefined>;
   getAllAddresses(): Promise<Address[]>;
   createAddress(address: InsertAddress): Promise<Address>;
-  updateAddress(id: number, address: Partial<InsertAddress>): Promise<Address | undefined>;
+  updateAddress(
+    id: number,
+    address: Partial<InsertAddress>
+  ): Promise<Address | undefined>;
   deleteAddress(id: number): Promise<boolean>;
-  
+
   // Route operations
   getRoute(id: number): Promise<Route | undefined>;
   getAllRoutes(): Promise<Route[]>;
@@ -38,19 +48,28 @@ export class MemStorage implements IStorage {
 
   async createAddress(insertAddress: InsertAddress): Promise<Address> {
     const id = this.currentAddressId++;
+
     const address: Address = {
-      ...insertAddress,
       id,
+      name: insertAddress.name,
+      address: insertAddress.address,
+      latitude: insertAddress.latitude,
+      longitude: insertAddress.longitude,
+      verified: insertAddress.verified ?? null,
       createdAt: new Date(),
     };
+
     this.addresses.set(id, address);
     return address;
   }
 
-  async updateAddress(id: number, updateData: Partial<InsertAddress>): Promise<Address | undefined> {
+  async updateAddress(
+    id: number,
+    updateData: Partial<InsertAddress>
+  ): Promise<Address | undefined> {
     const existing = this.addresses.get(id);
     if (!existing) return undefined;
-    
+
     const updated = { ...existing, ...updateData };
     this.addresses.set(id, updated);
     return updated;
@@ -70,11 +89,17 @@ export class MemStorage implements IStorage {
 
   async createRoute(insertRoute: InsertRoute): Promise<Route> {
     const id = this.currentRouteId++;
+
     const route: Route = {
-      ...insertRoute,
       id,
+      name: insertRoute.name ?? null,
+      algorithm: insertRoute.algorithm,
+      totalDistance: insertRoute.totalDistance,
+      estimatedTime: insertRoute.estimatedTime,
+      addressOrder: insertRoute.addressOrder,
       createdAt: new Date(),
     };
+
     this.routes.set(id, route);
     return route;
   }

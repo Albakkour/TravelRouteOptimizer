@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { geocodingService } from "./services/geocoding";
 import { tspService } from "./services/tsp";
-import { insertAddressSchema, insertRouteSchema } from "@shared/schema";
+import { insertAddressSchema } from "@shared/schema";
 import { z } from "zod";
 
 const optimizeRouteSchema = z.object({
@@ -119,7 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         algorithm,
         totalDistance: result.totalDistance,
         estimatedTime: result.estimatedTime,
-        addressOrder: result.orderedAddresses.map(addr => addr.id.toString()),
+        addressOrder: result.orderedAddresses.map((addr: { id: number }) => addr.id.toString()),
       };
       
       const savedRoute = await storage.createRoute(routeData);
