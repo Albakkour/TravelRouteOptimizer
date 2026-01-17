@@ -10,6 +10,11 @@ interface NominatimReverseResponse {
   display_name: string;
 }
 
+const NOMINATIM_HEADERS = {
+  "User-Agent": "TravelRouteOptimizer/1.0 (contact: mohamedbkoor@hotmail.com)",
+  "Accept": "application/json",
+};
+
 export class GeocodingService {
   async geocodeAddress(address: string): Promise<GeocodingResult | null> {
     try {
@@ -17,11 +22,13 @@ export class GeocodingService {
       const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1`;
 
       console.log(`Geocoding request: ${url}`);
-      const response = await fetch(url);
+      const response = await fetch(url, { headers: NOMINATIM_HEADERS });
 
       console.log(`Geocoding response status: ${response.status}`);
       if (!response.ok) {
-        console.error(`Geocoding API request failed: ${response.status} - ${response.statusText}`);
+        console.error(
+          `Geocoding API request failed: ${response.status} - ${response.statusText}`
+        );
         return null;
       }
 
@@ -41,7 +48,7 @@ export class GeocodingService {
         displayName: result.display_name,
       };
     } catch (error) {
-      console.error('Geocoding error:', error);
+      console.error("Geocoding error:", error);
       return null;
     }
   }
@@ -51,25 +58,28 @@ export class GeocodingService {
       const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
 
       console.log(`Reverse geocoding request: ${url}`);
-      const response = await fetch(url);
+      const response = await fetch(url, { headers: NOMINATIM_HEADERS });
 
       console.log(`Reverse geocoding response status: ${response.status}`);
       if (!response.ok) {
-        console.error(`Reverse geocoding API request failed: ${response.status} - ${response.statusText}`);
+        console.error(
+          `Reverse geocoding API request failed: ${response.status} - ${response.statusText}`
+        );
         return null;
       }
 
       const data: NominatimReverseResponse = await response.json();
-      console.log(`Reverse geocoding result: ${data.display_name ? 'found' : 'not found'}`);
+      console.log(
+        `Reverse geocoding result: ${data.display_name ? "found" : "not found"}`
+      );
 
       if (!data.display_name) {
-        console.log(`No reverse geocoding results for coordinates: ${latitude}, ${longitude}`);
         return null;
       }
 
       return data.display_name;
     } catch (error) {
-      console.error('Reverse geocoding error:', error);
+      console.error("Reverse geocoding error:", error);
       return null;
     }
   }
