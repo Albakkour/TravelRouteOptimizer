@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Edit, Trash2, Check } from "lucide-react";
-import { Address } from "@shared/schema";
+import type { Address } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -11,15 +11,18 @@ interface AddressListProps {
   isLoading: boolean;
 }
 
-export default function AddressList({ addresses, isLoading }: AddressListProps) {
+export default function AddressList({
+  addresses,
+  isLoading,
+}: AddressListProps) {
   const { toast } = useToast();
 
   const deleteAddressMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest('DELETE', `/api/addresses/${id}`);
+      await apiRequest("DELETE", `/api/addresses/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/addresses'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/addresses"] });
       toast({
         title: "Address Removed",
         description: "Address has been successfully removed",
@@ -98,6 +101,7 @@ export default function AddressList({ addresses, isLoading }: AddressListProps) 
             <div className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-medium mt-0.5">
               {index + 1}
             </div>
+
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
                 {address.name}
@@ -105,15 +109,20 @@ export default function AddressList({ addresses, isLoading }: AddressListProps) 
               <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                 {address.address}
               </p>
-              <div className="flex items-center mt-2 space-x-2">
-                {address.verified && (
-                  <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+
+              {address.verified && (
+                <div className="mt-2">
+                  <Badge
+                    variant="secondary"
+                    className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                  >
                     <Check className="w-3 h-3 mr-1" />
                     Verified
                   </Badge>
-                )}
-              </div>
+                </div>
+              )}
             </div>
+
             <div className="flex-shrink-0 flex items-center space-x-1">
               <Button
                 variant="ghost"
